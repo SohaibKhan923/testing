@@ -1,0 +1,6 @@
+pytest
+pytest-ordering
+pytest-html
+Pytest-emoji
+Requests
+Faker==7.0.1

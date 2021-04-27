@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>BE Automated tests</h1>
+    <p>Report generated on 23-Apr-2021 at 12:06:58 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Summary</h2>
+    <p>14 tests ran in 23.19 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">14 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_register.py::test_registration_smoke</td>
+          <td class="col-duration">8.15</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stderr setup------------------------------ <br/>INFO:root:Initialized PivApi for ENV: qa
+INFO:root: Getting featureconfig
+INFO:root: Getting stateconfig for State: PA
+INFO:root: Getting stateconfig for State: IL
+INFO:root: Getting stateconfig for State: MI
+INFO:root: Getting stateconfig for State: IN
+INFO:root: Getting stateconfig for State: CO
+INFO:root:Initialized GeocomplyApi for ENV: qa
+INFO:root: Getting policy check boxes for State: PA
+INFO:root: Registered new user: BEauto236779710 in state: PA
+INFO:root: Logged in with user: BEauto236779710 in State: PA
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     root:piv_api.py:19 Initialized PivApi for ENV: qa
+INFO     root:piv_api.py:225  Getting featureconfig
+INFO     root:piv_api.py:206  Getting stateconfig for State: PA
+INFO     root:piv_api.py:206  Getting stateconfig for State: IL
+INFO     root:piv_api.py:206  Getting stateconfig for State: MI
+INFO     root:piv_api.py:206  Getting stateconfig for State: IN
+INFO     root:piv_api.py:206  Getting stateconfig for State: CO
+INFO     root:geocomply_api.py:13 Initialized GeocomplyApi for ENV: qa
+INFO     root:piv_api.py:241  Getting policy check boxes for State: PA
+INFO     root:piv_api.py:82  Registered new user: BEauto236779710 in state: PA
+INFO     root:piv_api.py:104  Logged in with user: BEauto236779710 in State: PA<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_login.py::test_login_smoke</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_deposit_and_get_balance.py::test_deposit_and_get_balance[50]</td>
+          <td class="col-duration">2.72</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root:depositing cash $50 for user beauto236779710
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:119 depositing cash $50 for user beauto236779710<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_deposit_and_get_balance.py::test_deposit_and_get_balance[100]</td>
+          <td class="col-duration">2.55</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root:depositing cash $100 for user beauto236779710
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:119 depositing cash $100 for user beauto236779710<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_deposit_and_get_balance.py::test_deposit_and_get_balance[167]</td>
+          <td class="col-duration">2.21</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root:depositing cash $167 for user beauto236779710
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:119 depositing cash $167 for user beauto236779710<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_get_update_profile.py::test_get_profile</td>
+          <td class="col-duration">0.65</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>{&#x27;locale&#x27;: &#x27;en_US&#x27;, &#x27;preferences&#x27;: {&#x27;odds_format&#x27;: &#x27;american&#x27;, &#x27;require_login_security_questions&#x27;: False, &#x27;require_login_secondary_auth&#x27;: False, &#x27;login_notification&#x27;: False, &#x27;bet_acceptance_criteria&#x27;: &#x27;accept_higher_odds&#x27;, &#x27;review_odds_change&#x27;: False, &#x27;allow_stake_all_straights&#x27;: True}, &#x27;username&#x27;: &#x27;beauto236779710&#x27;, &#x27;email&#x27;: &#x27;BEauto236779710@test.com&#x27;, &#x27;guid&#x27;: &#x27;b92bab96-5e95-4bc1-91ef-6935fdca191d&#x27;, &#x27;created&#x27;: &#x27;2021-04-23T12:06:40.115920-04:00&#x27;, &#x27;modified&#x27;: &#x27;2021-04-23T12:06:44.997396-04:00&#x27;, &#x27;loyalty_id&#x27;: &#x27;IX202731314&#x27;, &#x27;country_code&#x27;: &#x27;US&#x27;, &#x27;market&#x27;: &#x27;US&#x27;, &#x27;regulation_id&#x27;: &#x27;PLAY&#x27;, &#x27;kyc_status&#x27;: &#x27;COMPLETE&#x27;, &#x27;kyc_approved&#x27;: True, &#x27;puma_activated&#x27;: True, &#x27;flags&#x27;: [], &#x27;actions&#x27;: [{&#x27;id&#x27;: &#x27;0c74a08d-21ec-46de-8f9f-ee02b61633eb&#x27;, &#x27;type&#x27;: &#x27;SHOW_2FA_SETUP&#x27;, &#x27;created_dt&#x27;: &#x27;2021-04-23T16:06:40.776838Z&#x27;}, {&#x27;id&#x27;: &#x27;252ea518-d35e-401d-a915-7bbc945cfe85&#x27;, &#x27;type&#x27;: &#x27;SHOW_FIRST_DEPOSIT_BONUS_PROMO&#x27;, &#x27;created_dt&#x27;: &#x27;2021-04-23T16:06:42.210817Z&#x27;}], &#x27;feature_flags&#x27;: []}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_get_update_profile.py::test_update_profile[decimal-False-True-False-True]</td>
+          <td class="col-duration">0.61</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root: Updating user profile
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:171  Updating user profile<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_get_update_profile.py::test_update_profile[american-True-False-False-True]</td>
+          <td class="col-duration">0.51</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root: Updating user profile
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:171  Updating user profile<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_get_update_profile.py::test_update_profile[decimal-False-False-True-False]</td>
+          <td class="col-duration">0.65</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root: Updating user profile
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:171  Updating user profile<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/users/test_get_update_profile.py::test_update_profile[american-False-False-False-True]</td>
+          <td class="col-duration">0.47</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root: Updating user profile
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:171  Updating user profile<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/test_homepage.py::test_homepage</td>
+          <td class="col-duration">0.66</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root: Getting homepage
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:189  Getting homepage<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/geocomply/test_valid_test_packets.py::test_generate_and_validate_valid_test_packets</td>
+          <td class="col-duration">1.06</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stderr setup------------------------------ <br/>INFO:root: Generated Test packet for state: PA
+INFO:root: Validated Test packet for state: PA
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     root:geocomply_api.py:36  Generated Test packet for state: PA
+INFO     root:geocomply_api.py:55  Validated Test packet for state: PA<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/test_state_config.py::test_state_config[PA]</td>
+          <td class="col-duration">0.61</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stderr call------------------------------ <br/>INFO:root: Getting stateconfig for State: PA
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:piv_api.py:206  Getting stateconfig for State: PA<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">be_tests/kambi/test_place_bet.py::test_place_bet_and_verify_couponid_smoke[PA]</td>
+          <td class="col-duration">2.22</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stderr setup------------------------------ <br/>INFO:root:Initialized kambi Api for PA with url: https://ctn-api.kambi.com
+INFO:root: Getting bet_Offers from Kambi
+INFO:root: placing bet on EventId: 1003250496 and betOfferId: 2028678421
+INFO:root: Successfully placed bet
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     root:kambi_api.py:15 Initialized kambi Api for PA with url: https://ctn-api.kambi.com
+INFO     root:kambi_api.py:19  Getting bet_Offers from Kambi
+INFO     root:kambi_api.py:88  placing bet on EventId: 1003250496 and betOfferId: 2028678421
+INFO     root:kambi_api.py:94  Successfully placed bet<br/> ------------------------------Captured stderr call------------------------------ <br/>INFO:root: Successfully retrieved coupon history couponRef: 657963519
+<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:kambi_api.py:109  Successfully retrieved coupon history couponRef: 657963519<br/> ----------------------------Captured stderr teardown---------------------------- <br/>INFO:root:RUN duration : 19.5 seconds
+<br/> -----------------------------Captured log teardown------------------------------ <br/>INFO     root:conftest.py:56 RUN duration : 19.5 seconds<br/></div></td></tr></tbody></table></body></html>

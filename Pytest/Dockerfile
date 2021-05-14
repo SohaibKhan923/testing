@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt -e ./Piv_packages/api_interac
 
 WORKDIR /be_tests
 
-RUN ["pytest", "-v"]
+CMD ["pytest", "-v"]
 # "--html=Reporting/report.html", "--css=Reporting/assets/report.css"
 
 CMD tail -f /dev/null

@@ -1,0 +1,36 @@
+def logs
+
+
+pipeline {
+    agent {
+        dockerfile {
+            dir 'Pytest/'
+            filename 'Dockerfile'
+        }
+
+    }
+    stages {
+        stage('Run Smoke Test') {
+            steps {
+                script {
+                    currentBuild.description = "Test: ${params.smoke_test}<br/>Env: ${params.env}<br/>Branch: ${params.branch}"
+                }
+                script {
+                    echo "Running Pytest"
+
+                        logs = sh(script: """
+                            cd /be_tests
+                            pytest -v \
+                                --env=${params.env} \
+                                -m "smoke" \
+                                --html=Reporting/report.html \
+                                --css=Reporting/assets/report.css \
+                        """, returnStdout: true,  encoding: 'UTF-8')
+
+                        def output = sh(returnStdout: true, script:"cat /be_tests/output.log")
+                        echo output
+                }
+            }
+        }
+    }
+}

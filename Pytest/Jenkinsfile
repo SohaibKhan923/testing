@@ -1,5 +1,3 @@
-def logs
-
 pipeline {
         agent {
         dockerfile {
@@ -24,10 +22,7 @@ pipeline {
                                 -m "smoke" \
                                 --html=Reporting/report.html \
                                 --css=Reporting/assets/report.css \
-                        """, returnStdout: true,  encoding: 'UTF-8')
-
-                        def output = sh(returnStdout: true, script:"cat output.log")
-                        echo output
+                        """
                 }
             }
         }

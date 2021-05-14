@@ -22,7 +22,7 @@ pipeline {
                                 -m "smoke" \
                                 --html=Reporting/report.html \
                                 --css=Reporting/assets/report.css \
-                        """
+                        """)
                 }
             }
         }

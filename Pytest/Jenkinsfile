@@ -18,6 +18,7 @@ pipeline {
                     echo "Running Pytest"
 
                         logs = sh(script: """
+                            cd Pytest \
                             pytest -v \
                                 --env=${params.env} \
                                 -m "smoke" \

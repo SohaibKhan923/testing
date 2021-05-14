@@ -26,10 +26,23 @@ pipeline {
                 }
             }
         }
+        stage('Generate HTML Report') {
+            steps {
+                  publishHTML (target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: 'Reporting',
+                        reportFiles: 'report.html',
+                        reportName: "HTML Report"
+                        ])
+            }
+        }
     }
     post { 
         always { 
             echo 'I will always say Hello again!'
         }
     }
+
 }

@@ -3,10 +3,7 @@ def logs
 
 pipeline {
     agent {
-        dockerfile {
-            dir 'Pytest/'
-            filename 'Dockerfile'
-        }
+        dockerfile true
 
     }
     stages {

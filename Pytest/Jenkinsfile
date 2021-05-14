@@ -26,7 +26,7 @@ pipeline {
                                 --css=Reporting/assets/report.css \
                         """, returnStdout: true,  encoding: 'UTF-8')
 
-                        def output = sh(returnStdout: true, script:"cat /be_tests/output.log")
+                        def output = sh(returnStdout: true, script:"cat output.log")
                         echo output
                 }
             }

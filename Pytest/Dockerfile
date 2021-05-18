@@ -11,5 +11,3 @@ WORKDIR /Pytest
 
 CMD ["pytest", "-v"]
 # "--html=Reporting/report.html", "--css=Reporting/assets/report.css"
-
-CMD tail -f /dev/nul

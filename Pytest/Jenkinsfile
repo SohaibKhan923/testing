@@ -10,7 +10,7 @@ pipeline {
         stage('Run Pytest') {
             steps {
                 script {
-                    currentBuild.description = "Test: ${params.smoke_test}<br/>Env: ${params.env}<br/>Branch: ${params.branch}"
+                    currentBuild.description = "Env: ${params.env}<br/>Branch: ${params.branch}"
                 }
                 script {
                     echo "Running Pytest"
